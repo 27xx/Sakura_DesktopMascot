@@ -1,0 +1,7 @@
+.vscode/
+Build/
+Library/
+obj/
+Assembly-CSharp.csproj
+Assembly-CSharp-Editor.csproj
+Sakura_DesktopMascot.sln

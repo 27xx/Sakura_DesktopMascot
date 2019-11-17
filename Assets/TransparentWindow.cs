@@ -14,6 +14,17 @@ public class TransparentWindow : MonoBehaviour
         public int cyTopHeight;
         public int cyBottomHeight;
     }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left; //最左坐标
+        public int Top; //最上坐标
+        public int Right; //最右坐标
+        public int Bottom; //最下坐标
+    }
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool GetWindowRect(IntPtr hWnd, ref RECT lpRect);
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetActiveWindow();
@@ -51,22 +62,40 @@ public class TransparentWindow : MonoBehaviour
 
     private IntPtr HWND_TOPMOST = new IntPtr(-1);
 
-    private IntPtr _hwnd;
+    private IntPtr hwnd;
+
+    public int height = 1080;
+    public int width = 1920;
 
     void Start()
     {
 
 #if !UNITY_EDITOR
-    MARGINS margins = new MARGINS() { cxLeftWidth = -1 };
-    _hwnd = GetActiveWindow();
-    int fWidth = Screen.width;
-    int fHeight = Screen.height;
+        MARGINS margins = new MARGINS() { cxLeftWidth = -1 };
+        hwnd = GetActiveWindow();
 
-        SetWindowLong(_hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-        SetWindowLong(_hwnd, GWL_EXSTYLE, WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT);
-        DwmExtendFrameIntoClientArea(_hwnd, ref margins);
-        SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, fWidth, fHeight, SWP_FRAMECHANGED | SWP_SHOWWINDOW); 
-        ShowWindowAsync(_hwnd, 3); //Forces window to show in case of unresponsive app    // SW_SHOWMAXIMIZED(3)
+        SetWindowPos(hwnd, (System.IntPtr)0, (int)(System.Windows.Forms.Cursor.Position.X - width * 0.5f),
+        (int)(System.Windows.Forms.Cursor.Position.Y - height * 0.5f), height, width, 4);
+
+        // Set properties of the window
+        // See: https://msdn.microsoft.com/en-us/library/windows/desktop/ms633591%28v=vs.85%29.aspx
+        SetWindowLong(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+
+
+        // Extend the window into the client area
+        //See: https://msdn.microsoft.com/en-us/library/windows/desktop/aa969512%28v=vs.85%29.aspx 
+        DwmExtendFrameIntoClientArea(hwnd, ref margins);
+#endif
+    }
+
+    private void LateUpdate()
+    {
+#if !UNITY_EDITOR
+        if (Input.GetMouseButton(2))
+        {
+            SetWindowPos(hwnd, HWND_TOPMOST, (int)(System.Windows.Forms.Cursor.Position.X - width * 0.5f),
+            (int)(System.Windows.Forms.Cursor.Position.Y - height * 0.5f), height, width, 4);
+        }
 #endif
     }
 

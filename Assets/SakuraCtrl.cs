@@ -57,7 +57,7 @@ public class SakuraCtrl : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonUp(0) &&
+        if ((Input.GetMouseButtonUp(0) /*|| RainityInput.GetMouseButtonUp(0)*/) &&
         _animator.GetNextAnimatorClipInfo(0).Length == 0 &&
         _animator.GetCurrentAnimatorStateInfo(0).IsName("Avatar_Yae_Sakura_Ani_StandBy"))
         {
