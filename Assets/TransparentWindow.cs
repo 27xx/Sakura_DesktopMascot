@@ -7,6 +7,8 @@ public class TransparentWindow : MonoBehaviour
     [SerializeField]
     private Material m_Material;
 
+    #region 导入API
+
     private struct MARGINS
     {
         public int cxLeftWidth;
@@ -22,6 +24,9 @@ public class TransparentWindow : MonoBehaviour
         public int Right; //最右坐标
         public int Bottom; //最下坐标
     }
+    [DllImport("user32.dll")]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     static extern bool GetWindowRect(IntPtr hWnd, ref RECT lpRect);
@@ -62,41 +67,97 @@ public class TransparentWindow : MonoBehaviour
 
     private IntPtr HWND_TOPMOST = new IntPtr(-1);
 
-    private IntPtr hwnd;
+    #endregion
 
-    public int height = 1080;
-    public int width = 1920;
+    public IntPtr windowHandle
+    {
+        get
+        {
+            if (_windowHandle == IntPtr.Zero)
+            {
+                _windowHandle = FindWindow(null, Application.productName);
+            }
+            return _windowHandle;
+        }
+    }
+
+    public int screenWidth = 600;
+    public int screenHeight = 1000;
+    IntPtr _windowHandle = IntPtr.Zero;
+    Vector2Int _offset = Vector2Int.zero;
 
     void Start()
     {
+        if (Application.isEditor) return;
 
-#if !UNITY_EDITOR
         MARGINS margins = new MARGINS() { cxLeftWidth = -1 };
-        hwnd = GetActiveWindow();
 
-        SetWindowPos(hwnd, (System.IntPtr)0, (int)(System.Windows.Forms.Cursor.Position.X - width * 0.5f),
-        (int)(System.Windows.Forms.Cursor.Position.Y - height * 0.5f), height, width, 4);
+        var pos = LoadPos();
+        SetWindowPos(windowHandle, (IntPtr)0, pos.x, pos.y, screenWidth, screenHeight, 4);
 
         // Set properties of the window
         // See: https://msdn.microsoft.com/en-us/library/windows/desktop/ms633591%28v=vs.85%29.aspx
-        SetWindowLong(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+        SetWindowLong(windowHandle, GWL_STYLE, WS_POPUP | WS_VISIBLE);
 
 
         // Extend the window into the client area
         //See: https://msdn.microsoft.com/en-us/library/windows/desktop/aa969512%28v=vs.85%29.aspx 
-        DwmExtendFrameIntoClientArea(hwnd, ref margins);
-#endif
+        DwmExtendFrameIntoClientArea(windowHandle, ref margins);
     }
 
     private void LateUpdate()
     {
-#if !UNITY_EDITOR
+        if (Application.isEditor) return;
+
+        Drag();
+    }
+
+    private void Drag()
+    {
+        // 拖拽开始
+        if (Input.GetMouseButtonDown(2))
+        {
+            RECT rect = new RECT();
+            GetWindowRect(windowHandle, ref rect);
+            _offset.x = - System.Windows.Forms.Cursor.Position.X + rect.Left;
+            _offset.y = - System.Windows.Forms.Cursor.Position.Y + rect.Top;
+        }
+
+        // 拖拽中
         if (Input.GetMouseButton(2))
         {
-            SetWindowPos(hwnd, HWND_TOPMOST, (int)(System.Windows.Forms.Cursor.Position.X - width * 0.5f),
-            (int)(System.Windows.Forms.Cursor.Position.Y - height * 0.5f), height, width, 4);
+            SetWindowPos(windowHandle, HWND_TOPMOST, System.Windows.Forms.Cursor.Position.X + _offset.x,
+            System.Windows.Forms.Cursor.Position.Y + _offset.y, 0, 0, 1 | 4);
         }
-#endif
+
+        // 结束拖拽
+        if (Input.GetMouseButtonUp(2))
+        {
+            SavePos();
+        }
+
+        // 归位
+        if (Input.GetKeyDown(KeyCode.F9))
+            SetWindowPos(windowHandle, HWND_TOPMOST, 0, 0, 0, 0, 1 | 4);
+    }
+
+    void SavePos()
+    {
+        RECT rect = new RECT();
+        GetWindowRect(windowHandle, ref rect);
+        PlayerPrefs.SetInt(Application.productName + "_WindowRECT_Left", rect.Left);
+        PlayerPrefs.SetInt(Application.productName + "_WindowRECT_Top", rect.Top);
+    }
+
+    Vector2Int LoadPos()
+    {
+        if (PlayerPrefs.HasKey(Application.productName + "_WindowRECT_Left"))
+        {
+            return new Vector2Int(PlayerPrefs.GetInt(Application.productName + "_WindowRECT_Left"),
+             PlayerPrefs.GetInt(Application.productName + "_WindowRECT_Top"));
+        }
+        else
+            return new Vector2Int(100, 100);
     }
 
     void OnRenderImage(RenderTexture from, RenderTexture to)
