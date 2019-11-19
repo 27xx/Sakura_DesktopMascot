@@ -88,7 +88,9 @@ public class TransparentWindow : MonoBehaviour
 
     void Start()
     {
+        Camera.main.depthTextureMode = DepthTextureMode.Depth;
         if (Application.isEditor) return;
+
 
         MARGINS margins = new MARGINS() { cxLeftWidth = -1 };
 
@@ -119,8 +121,8 @@ public class TransparentWindow : MonoBehaviour
         {
             RECT rect = new RECT();
             GetWindowRect(windowHandle, ref rect);
-            _offset.x = - System.Windows.Forms.Cursor.Position.X + rect.Left;
-            _offset.y = - System.Windows.Forms.Cursor.Position.Y + rect.Top;
+            _offset.x = -System.Windows.Forms.Cursor.Position.X + rect.Left;
+            _offset.y = -System.Windows.Forms.Cursor.Position.Y + rect.Top;
         }
 
         // 拖拽中

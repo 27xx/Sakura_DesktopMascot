@@ -3,8 +3,6 @@ Shader "Custom/MakeTransparent"
     Properties
     {
         _MainTex ("Base (RGB)", 2D) = "white" { }
-        _TransparentColorKey ("Transparent Color Key", Color) = (0, 1, 0, 1)
-        _TransparencyMargin ("Transparency Margin", Float) = 0.01
     }
     SubShader
     {
@@ -20,44 +18,29 @@ Shader "Custom/MakeTransparent"
             
             #include "UnityCG.cginc"
             
-            struct VertexData
-            {
-                float4 position: POSITION;
-                float2 uv: TEXCOORD0;
-            };
+            sampler2D _MainTex;
+            sampler2D _CameraDepthTexture;
             
-            struct VertexToPixelData
+            struct v2f
             {
                 float4 position: SV_POSITION;
                 float2 uv: TEXCOORD0;
             };
             
-            VertexToPixelData VertexShaderFunction(VertexData input)
+            v2f VertexShaderFunction(appdata_img i)
             {
-                VertexToPixelData output;
-                output.position = UnityObjectToClipPos(input.position);
-                output.uv = input.uv;
-                return output;
+                v2f o;
+                o.position = UnityObjectToClipPos(i.vertex);
+                o.uv = i.texcoord;
+                return o;
             }
             
-            sampler2D _MainTex;
-            float3 _TransparentColorKey;
-            float _TransparencyMargin;
             
-            float4 PixelShaderFunction(VertexToPixelData input): SV_Target
+            float4 PixelShaderFunction(v2f i): SV_Target
             {
-                float4 color = tex2D(_MainTex, input.uv);
+                float depth = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv));
                 
-                float deltaR = abs(color.r - _TransparentColorKey.r);
-                float deltaG = abs(color.g - _TransparentColorKey.g);
-                float deltaB = abs(color.b - _TransparentColorKey.b);
-                
-                if (deltaR < _TransparencyMargin && deltaG < _TransparencyMargin && deltaB < _TransparencyMargin)
-                {
-                    return float4(0.0f, 0.0f, 0.0f, 0.0f);
-                }
-                
-                return color;
+                return lerp(tex2D(_MainTex, i.uv), float4(0, 0, 0, 0), step(0.9, depth));
             }
             ENDCG
             
